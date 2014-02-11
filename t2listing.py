@@ -1056,10 +1056,8 @@ class t2listing(file):
         geo_matches=geo.block_name_list==self.element.row_name
         doflows = False
         if flows and (self.connection is not None):
-            if geo_matches:
-                if grid is not None: doflows = True
-                else: raise Exception("t2listing.write_vtk(): if flows == True, a t2grid object must be specified.")
-            else: raise Exception("t2listing.write_vtk(): if flows == True, block names in the listing file and geometry must match.")
+            if grid is not None: doflows = True
+            else: raise Exception("t2listing.write_vtk(): if flows == True, a t2grid object must be specified.")
         arrays=geo.vtk_data
         if grid is not None:
             grid_arrays=grid.get_vtk_data(geo)

@@ -109,18 +109,22 @@ class t2grid(object):
         return any([con.centre is not None for con in self.connectionlist])
     connection_centres_defined = property(get_connection_centres_defined)
 
-    def calculate_block_centres(self,geo):
+    def calculate_block_centres(self, geo):
         """Calculates block centres from geometry object."""
-        if geo.atmosphere_type==0:
-            istart=1
-            self.blocklist[0].centre=None  # centre not well defined for single atmosphere block
-        else: istart=0
-        for blk in self.blocklist[istart:]:
-            layername=geo.layer_name(blk.name)
-            lay=geo.layer[layername]
-            colname=geo.column_name(blk.name)
-            col=geo.column[colname]
-            blk.centre=geo.block_centre(lay,col)
+        print "calculating block centres..."
+        from copy import copy
+        blknames = copy(geo.block_name_list)
+        if geo.atmosphere_type == 0:
+            blkname = geo.block_name_list[0]
+            self.block[blkname].centre = None  # centre not well defined for single atmosphere block
+            blknames.remove(blkname)
+        for blkname in blknames:
+            blk = self.block[blkname]
+            layername = geo.layer_name(blk.name)
+            lay = geo.layer[layername]
+            colname = geo.column_name(blk.name)
+            col = geo.column[colname]
+            blk.centre = geo.block_centre(lay,col)
 
     def calculate_connection_centres(self, geo):
         """Calculates centre (and normal vector) for each connection face.  Note that the 'centre'
@@ -460,16 +464,17 @@ class t2grid(object):
                 else: 
                     array.SetNumberOfComponents(1)
                     array.SetNumberOfValues(array_length[array_type])
-        natm=geo.num_atmosphere_blocks
-        rindex=self.rocktype_indices[natm:]
+        natm = geo.num_atmosphere_blocks
+        rindexdict = dict(zip([blk.name for blk in self.blocklist], self.rocktype_indices))
+        rindex = [rindexdict[blkname] for blkname in geo.block_name_list[natm:]]
         for i,ri in enumerate(rindex):
             arrays['Block']['Rock type index'].SetValue(i,ri)
             rt=self.rocktypelist[ri]
             arrays['Block']['Porosity'].SetValue(i,rt.porosity)
             k=rt.permeability
             arrays['Block']['Permeability'].SetTuple3(i,k[0],k[1],k[2])
-        for i,blk in enumerate(self.blocklist[natm:]):
-            arrays['Block']['Name'].SetTupleValue(i,blk.name)
+        for i,blkname in enumerate(geo.block_name_list[natm:]):
+            arrays['Block']['Name'].SetTupleValue(i,blkname)
         return arrays
 
     def write_vtk(self,geo,filename,wells=False):
@@ -497,7 +502,8 @@ class t2grid(object):
         A = sparse.lil_matrix((3*nele, self.num_connections))
         if not self.block_centres_defined: self.calculate_block_centres(geo)
         if not self.connection_centres_defined: self.calculate_connection_centres(geo)
-        for iblk,blk in enumerate(self.blocklist[natm:]):
+        for iblk, blkname in enumerate(geo.block_name_list[natm:]):
+            blk = self.block[blkname]
             ncons = blk.num_connections
             if ncons > 0:
                 M,icons = [],[]
