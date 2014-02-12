@@ -111,7 +111,6 @@ class t2grid(object):
 
     def calculate_block_centres(self, geo):
         """Calculates block centres from geometry object."""
-        print "calculating block centres..."
         from copy import copy
         blknames = copy(geo.block_name_list)
         if geo.atmosphere_type == 0:
