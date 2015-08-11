@@ -34,6 +34,7 @@ t2data_format_specification = {
     'param3':[['relative_error','absolute_error','pivot','upstream_weight','newton_weight','derivative_increment'],
               ['10.4e']*6],
     'timestep': [['timestep']*8,['10.4e']*8],
+    'momop':[['_option_str'],['12s']],
     'multi': [['num_components','num_equations','num_phases','num_secondary_parameters','num_inc'], ['5d']*5],
     'multi_autough2': [['num_components','num_equations','num_phases','num_secondary_parameters','eos'], ['5d']*4+['4s']],
     'lineq':[['type','epsilon','max_iterations','gauss','num_orthog'],['2d','10.4e','4d','1d','4d']],
@@ -145,7 +146,7 @@ default_parameters = {'max_iterations':None, 'print_level':None, 'max_timesteps'
                       'upstream_weight':None, 'newton_weight':None, 'derivative_increment':None, 'default_incons':[]}
 
 t2data_sections = ['SIMUL','ROCKS','MESHM','PARAM','START','NOVER','RPCAP','LINEQ','SOLVR','MULTI','TIMES',
-                   'SELEC','DIFFU','ELEME','CONNE','GENER','SHORT','FOFT','COFT','GOFT','INCON','INDOM']
+                   'SELEC','DIFFU','ELEME','CONNE','GENER','SHORT','FOFT','COFT','GOFT','INCON','INDOM','MOMOP']
 
 t2_extra_precision_sections = ['ROCKS', 'ELEME', 'CONNE', 'RPCAP', 'GENER']
 
@@ -159,6 +160,7 @@ class t2data(object):
         self.simulator = ''
         self.parameter = deepcopy(default_parameters)
         self.multi = {}
+        self.momop = {}
         self.start = False
         self.relative_permeability = {}
         self.capillarity = {}
@@ -215,14 +217,14 @@ class t2data(object):
                  self.read_noversion, self.read_rpcap, self.read_lineq, self.read_solver, self.read_multi, self.read_times,
                  self.read_selection, self.read_diffusion, self.read_blocks, self.read_connections,
                  self.read_generators, self.read_short_output, self.read_history_blocks, 
-                 self.read_history_connections, self.read_history_generators, self.read_incons, self.read_indom]))
+                 self.read_history_connections, self.read_history_generators, self.read_incons, self.read_indom, self.read_momop]))
         self.write_fn = dict(zip(
                 t2data_sections,
                 [self.write_simulator, self.write_rocktypes, self.write_meshmaker, self.write_parameters,
                  self.write_start, self.write_noversion, self.write_rpcap, self.write_lineq, self.write_solver,
                  self.write_multi, self.write_times, self.write_selection, self.write_diffusion, self.write_blocks,
                  self.write_connections, self.write_generators, self.write_short_output, self.write_history_blocks,
-                 self.write_history_connections, self.write_history_generators, self.write_incons, self.write_indom]))
+                 self.write_history_connections, self.write_history_generators, self.write_incons, self.write_indom, self.write_momop]))
         skip_fn = dict(zip(t2_extra_precision_sections,
                            [self.skip_rocktypes, self.skip_blocks, self.skip_connections, 
                             self.skip_rpcap, self.skip_generators]))
@@ -236,7 +238,7 @@ class t2data(object):
              self.noversion, self.relative_permeability or self.capillarity, self.lineq, self.solver, self.multi,
              self.output_times, self.selection, self.diffusion, self.grid and self.grid.blocklist,
              self.grid and self.grid.connectionlist, self.generatorlist, self.short_output, self.history_block,
-             self.history_connection, self.history_generator, self.incon, self.indom]))
+             self.history_connection, self.history_generator, self.incon, self.indom, self.momop]))
         return [keyword for keyword in t2data_sections if data_present[keyword]]
     present_sections = property(get_present_sections)
 
@@ -423,7 +425,21 @@ class t2data(object):
                     vals=[rt.capillarity['type'],None]+rt.capillarity['parameters']
                     outfile.write_values(vals,'rocks1.2')
         outfile.write('\n')
-
+        
+    def read_momop(self,infile):
+        """Reads itough2 momop params"""
+        spec=['momop','momop_autough2'][self.type=='AUTOUGH2']
+        infile.read_value_line(self.momop,spec)
+        momops=ljust(self.momop['_option_str'].rstrip(),12).replace(' ','0')
+        self.momop['option']=np.array([int(momop) for momop in momops],int8)
+        
+    def write_momop(self,outfile):
+        if self.momop<>{}:
+            outfile.write('MOMOP\n')
+            self.momop['_option_str']=''.join([str(m) for m in self.momop['option'][1:]])
+            spec=['momop','momop_autough2'][self.type=='AUTOUGH2']
+            outfile.write_value_line(self.momop,spec)
+        
     def read_parameters(self,infile):
         """Reads simulation parameters"""
         spec=['param1','param1_autough2'][self.type=='AUTOUGH2']
