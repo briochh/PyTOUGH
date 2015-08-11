@@ -1055,7 +1055,7 @@ class t2listing(file):
         flownames = []
         def is_flowname(name):
             name = name.lower()
-            return name.startswith('flo') or name.endswith('flo') or name.endswith('flow') or name.endswith('veloc')
+            return name.startswith('flo') or name.endswith('flo') or name.endswith('flow') or name.endswith('veloc') or name.startswith('vel') or name.startswith('fh')
         if flows:
             if flux_matrix is None: flux_matrix = grid.flux_matrix(geo, blockmap)
             flownames = [name for name in self.connection.column_name if is_flowname(name)]
